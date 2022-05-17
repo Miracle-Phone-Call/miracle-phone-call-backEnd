@@ -66,7 +66,39 @@ app.post("/login", (req, res, next) => {
     })(req, res, next);
   });
 
+  app.get("/users/:username", async (req, res) => {
+    const userName = req.params.username
+    const user = await pool.query('SELECT username, first_name, last_name FROM public.users WHERE username = $1', [userName]).then(result => result.rows[0])
+    console.log("im here")
+    res.status(200).json(user)
+  })
+// update all
+app.patch("/users/:username",async(req,res) => {
+  const {firstName, lastName} = req.body
+  const userName = req.params.username
+  const updateInfo= await pool.query('UPDATE public.users SET first_name = $1, last_name = $2 WHERE username = $3 RETURNING *', [firstName, lastName, userName]).then(results => results.rows[0])
+  res.status(200).json(updateInfo)
+})
 
+//update password 
+app.patch("/users/:username/password",async(req,res) => {
+  const {currentPassword, newPassword, retypeNewPassword} = req.body
+  const userName = req.params.username
+  const currPass = await pool.query('SELECT password FROM public.users WHERE username = $1', [userName]).then(result => result.rows[0].password)
+  if (bcrypt.compare(currPass, currentPassword) && newPassword === retypeNewPassword) {
+    const hashPassword = await bcrypt.hash(newPassword, 10)
+    const updatePassword = await pool.query('UPDATE public.users SET password = $1 WHERE username = $2 RETURNING *', [hashPassword,userName]).then(results => results.rows[0])
+    res.status(200).json(updatePassword)
+  } else {
+    res.json({message: "Password wrong"})
+  }
+})
+
+app.delete("/users/:username", async(req, res) => {
+  const userName = req.params.username
+  const delteUsername = await pool.query('DELETE FROM users WHERE username = $1 RETURNING *', [userName])
+  res.status(200).json(delteUsername)
+})
 
 // //FUNCTIONS FOR AUTH
 // function checkAuthenticated (req, res, next) {

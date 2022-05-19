@@ -59,49 +59,66 @@ app.post("/login", (req, res, next) => {
       else {
         req.logIn(user, (err) => {
           if (err) throw err;
-          res.send("Successfully Authenticated");
-          console.log(req.user);
+          res.send(user);
         });
       }
     })(req, res, next);
   });
 
-  app.get("/users/:username", async (req, res) => {
-    const userName = req.params.username
-    const user = await pool.query('SELECT username, first_name, last_name FROM public.users WHERE username = $1', [userName]).then(result => result.rows[0])
-    console.log("im here")
-    res.status(200).json(user)
+  //SEARCH USER ARRAY BACKEND
+  app.get('/search/:username', async(req, res) => {
+    const userName = req.params.username;
+    const getAllUsers = await pool.query('SELECT id, username, first_name, last_name FROM public.users').then(results => results.rows)
+    res.status(200).json(getAllUsers)
   })
-// update all
-app.patch("/users/:username",async(req,res) => {
-  const {firstName, lastName} = req.body
-  const userName = req.params.username
-  const updateInfo= await pool.query('UPDATE public.users SET first_name = $1, last_name = $2 WHERE username = $3 RETURNING *', [firstName, lastName, userName]).then(results => results.rows[0])
-  res.status(200).json(updateInfo)
-})
+  
+  //SEARCH
+  app.post('/search/add', async (req, res) => {
+    const {user_id, friend_id} = req.body;
+    const addContact = await pool.query('INSERT INTO public.relationships (user_id, friend_id) VALUES ($1, $2) RETURNING *', [user_id, friend_id]).then(res => res.rows[0])
+    res.status(200).json("Contact added")
+  })
 
-//update password 
-app.patch("/users/:username/password",async(req,res) => {
-  const {currentPassword, newPassword, retypeNewPassword} = req.body
-  const userName = req.params.username
-  const currPass = await pool.query('SELECT password FROM public.users WHERE username = $1', [userName]).then(result => result.rows[0].password)
-  if (bcrypt.compare(currPass, currentPassword) && newPassword === retypeNewPassword) {
-    const hashPassword = await bcrypt.hash(newPassword, 10)
-    const updatePassword = await pool.query('UPDATE public.users SET password = $1 WHERE username = $2 RETURNING *', [hashPassword,userName]).then(results => results.rows[0])
-    res.status(200).json(updatePassword)
-  } else {
-    res.json({message: "Password wrong"})
-  }
-})
+  //CHAT CONTACTS
+  app.get('/chat/:id/contacts', async (req, res) => {
+    const {id} = req.params;
+    const contacts = await pool.query('SELECT username, first_name, last_name FROM public.users LEFT JOIN public.relationships ON public.users.id = public.relationships.friend_id WHERE public.relationships.user_id = $1', [id]).then(results => results.rows)
+    res.status(200).json(contacts);
+  })
 
-app.delete("/users/:username", async(req, res) => {
-  const userName = req.params.username
-  const delteUsername = await pool.query('DELETE FROM users WHERE username = $1 RETURNING *', [userName])
-  res.status(200).json(delteUsername)
-})
+  //PROFILE BACKEND
+  // update all
+  app.patch("/users/:username",async(req,res) => {
+      const {firstName, lastName} = req.body
+    const userName = req.params.username
+    const updateInfo= await pool.query('UPDATE public.users SET first_name = $1, last_name = $2 WHERE username = $3 RETURNING *', [firstName, lastName, userName]).then(results => results.rows[0])
+    res.status(200).json(updateInfo)
+  })
+  
+  //update password 
+  app.patch("/users/:username/password",async(req,res) => {
+    const {currentPassword, newPassword, retypeNewPassword} = req.body
+    const userName = req.params.username
+    const currPass = await pool.query('SELECT password FROM public.users WHERE username = $1', [userName]).then(result => result.rows[0].password)
+    if (bcrypt.compare(currPass, currentPassword) && newPassword === retypeNewPassword) {
+      const hashPassword = await bcrypt.hash(newPassword, 10)
+      const updatePassword = await pool.query('UPDATE public.users SET password = $1 WHERE username = $2 RETURNING *', [hashPassword,userName]).then(results => results.rows[0])
+      res.status(200).json(updatePassword)
+    } else {
+      res.json({message: "Password wrong"})
+    }
+  })
+  
+  app.delete("/users/:username", async(req, res) => {
+    const userName = req.params.username
+    const delteUsername = await pool.query('DELETE FROM users WHERE username = $1 RETURNING *', [userName])
+    res.status(200).json(delteUsername)
+  })
 
-// //FUNCTIONS FOR AUTH
-// function checkAuthenticated (req, res, next) {
+
+
+  // //FUNCTIONS FOR AUTH
+  // function checkAuthenticated (req, res, next) {
 //     if (req.isAuthenticated()) {
 //         return res.redirect('/users/home')
 //     }

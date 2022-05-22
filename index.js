@@ -9,6 +9,7 @@ const cookieParser = require('cookie-parser')
 const bcrypt = require('bcrypt')
 const session = require('express-session')
 const initializePassport = require('./passportConfig')(passport)
+const bodyParser = require('body-parser')
 
 
 const app = express();
@@ -32,6 +33,13 @@ app.use(cookieParser('secretcode'))
 app.use('/user', userRouter)
 
 
+//Chat
+app.use(bodyParser.json())
+app.use(
+  bodyParser.urlencoded({
+    extended: true,
+  })
+)
 
 
 //ROUTES
@@ -114,6 +122,24 @@ app.post("/login", (req, res, next) => {
     const delteUsername = await pool.query('DELETE FROM users WHERE username = $1 RETURNING *', [userName])
     res.status(200).json(delteUsername)
   })
+
+//POST Chat messages
+
+// app.post("/chat/message", async(request, response) => {
+//   const { text, username } = request.body;
+//  const addMessage = pool.query( "INSERT INTO messages (message, sender_id) VALUES ($1, $2) RETURNING text, username, created_at", [text, username]).then(response => response.rows[0])
+       
+//         response.status(201).send(addMessage);
+        
+  
+// });
+
+  app.post("/chat/message", async (req, res) => {
+    const { text } = req.body;
+    const addMessage = await pool.query(
+    'INSERT INTO public.messages (message) VALUES ($1) RETURNING *', [text]).then(res => res.rows[0])
+      res.status(200).json(addMessage);
+  });
 
 
 

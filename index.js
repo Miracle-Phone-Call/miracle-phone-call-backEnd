@@ -68,7 +68,7 @@ app.post("/login", (req, res, next) => {
   //SEARCH USER ARRAY BACKEND
   app.get('/search/:username', async(req, res) => {
     const userName = req.params.username;
-    const getAllUsers = await pool.query('SELECT id, username, first_name, last_name FROM public.users').then(results => results.rows)
+    const getAllUsers = await pool.query('SELECT id, username, first_name, last_name FROM public.users WHERE username != $1', [userName]).then(results => results.rows)
     res.status(200).json(getAllUsers)
   })
   
@@ -85,6 +85,8 @@ app.post("/login", (req, res, next) => {
     const contacts = await pool.query('SELECT username, first_name, last_name FROM public.users LEFT JOIN public.relationships ON public.users.id = public.relationships.friend_id WHERE public.relationships.user_id = $1', [id]).then(results => results.rows)
     res.status(200).json(contacts);
   })
+
+
 
   //PROFILE BACKEND
   // update all

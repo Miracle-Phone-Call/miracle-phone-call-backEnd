@@ -1,6 +1,63 @@
 require("dotenv").config();
+
+////////////////////////////////////////////////////////////////////////////////
+//Code added for WebSocket chat (FrontEnd)//
+//Code for Chat App UI
 const express = require('express')
-const cors = require('cors')
+//This variable will require the express dependency
+const app = express();
+//Instance of express function
+const http = require("http");
+//Variable for HTTP Library of Express to build server on Socket.
+const cors = require("cors");
+//Requires the Cors library (Socket.IO deals with alot of CORS Issues)
+const server = http.createServer(app) 
+//Server will use the HTTP Library and CreateServer function.
+const { Server }= require("socket.io")
+//Requirement of the Socket.IO Library
+//Express app will generate server for us
+
+//CORS Middleware Referenced Below:
+//app.use(cors()); //App will use CORS Middleware
+
+//new Instance of server class from Socket Io
+const io = new Server(server, {
+  //resolves CORS Issues
+  cors: {
+      origin: "http://localhost:3000", //Localhost server for react Socket.io - 
+      //it is okay to accept socket communication with this URL
+      methods: ["GET", "POST"], //Specified methods that are allowed
+  },
+  }
+  )
+
+//Listens for the port 3001
+server.listen(3001, () => {
+  console.log('SERVER RUNNING')
+  //When server runs, it will console.log the message "Server Running"
+  }
+  )
+
+
+
+//Socket IO Events
+
+
+//Listening for events in our Socket.IO Server
+
+//User Connections
+io.on("connection", (socket) => {
+
+console.log('User Connected', socket.id);
+
+//User Disconnect
+socket.on("disconnect", () => {
+    console.log('User Disconnected', socket.id)
+})
+
+}) //Listening for an event with this ID
+
+/////////////////////////////////////////////////////////////////////////////
 const pool = require('./dbconfig')
 const userRouter = require('./Routes/userRouter')
 const passport = require('passport')
@@ -12,13 +69,13 @@ const initializePassport = require('./passportConfig')(passport)
 const bodyParser = require('body-parser')
 
 
-const app = express();
+
 
 //MIDDLEWARE
 app.use(express.json());
 app.use(express.urlencoded({ extended: true}));
 app.use(cors({
-    origin: "http://localhost:3000",
+    origin: "http://localhost:3000", //Original Code
     credentials: true
 }));
 app.use(session({

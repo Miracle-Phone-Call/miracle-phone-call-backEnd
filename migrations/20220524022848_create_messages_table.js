@@ -5,10 +5,9 @@
  exports.up = function(knex) {
     return knex.schema.createTable('messages', function (table) {
         table.increments("id").primary();
+        table.integer('conversation_id').references('id').inTable('conversations')
         table.string('message').notNullable();
-        table.time('created_at').notNullable();
         table.integer('sender_id').references('id').inTable("users");
-        table.integer('room_id').references('id').inTable('chat_room');
       })
 };
 

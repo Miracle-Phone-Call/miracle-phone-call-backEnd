@@ -9,6 +9,11 @@ const cookieParser = require('cookie-parser')
 const bcrypt = require('bcrypt')
 const session = require('express-session')
 const initializePassport = require('./passportConfig')(passport)
+const io = require('socket.io')(8900, {
+  cors: {
+    origin: "http://localhost:3000"
+  },
+});
 
 
 const app = express();
@@ -29,7 +34,7 @@ app.use(passport.initialize());
 app.use(passport.session());
 app.use(cookieParser('secretcode'))
 
-app.use('/user', userRouter)
+// app.use('/user', userRouter)
 
 
 
@@ -79,19 +84,13 @@ app.post("/login", (req, res, next) => {
     res.status(200).json("Contact added")
   })
 
-  //CHAT CONTACTS
-  app.get('/chat/:id/contacts', async (req, res) => {
-    const {id} = req.params;
-    const contacts = await pool.query('SELECT username, first_name, last_name FROM public.users LEFT JOIN public.relationships ON public.users.id = public.relationships.friend_id WHERE public.relationships.user_id = $1', [id]).then(results => results.rows)
-    res.status(200).json(contacts);
-  })
-
-
-
+  
+  
+  
   //PROFILE BACKEND
   // update all
   app.patch("/users/:username",async(req,res) => {
-      const {firstName, lastName} = req.body
+    const {firstName, lastName} = req.body
     const userName = req.params.username
     const updateInfo= await pool.query('UPDATE public.users SET first_name = $1, last_name = $2 WHERE username = $3 RETURNING *', [firstName, lastName, userName]).then(results => results.rows[0])
     res.status(200).json(updateInfo)
@@ -116,6 +115,50 @@ app.post("/login", (req, res, next) => {
     const delteUsername = await pool.query('DELETE FROM users WHERE username = $1 RETURNING *', [userName])
     res.status(200).json(delteUsername)
   })
+  
+  //CHAT CONTACTS
+  app.get('/chat/:id/contacts', async (req, res) => {
+    const {id} = req.params;
+    const contacts = await pool.query('SELECT username, first_name, last_name FROM public.users LEFT JOIN public.relationships ON public.users.id = public.relationships.friend_id WHERE public.relationships.user_id = $1', [id]).then(results => results.rows)
+    res.status(200).json(contacts);
+  })
+
+  //new conversation
+  app.post('/chat', async (req, res) => {
+    const {sender_id, reciever_id} = req.body
+    const data = await pool.query(`INSERT INTO public.conversations (members) VALUES (ARRAY[${sender_id}, ${reciever_id}]) RETURNING *`).then(result => result.rows[0])
+    res.status(200).json(data);
+  })
+
+  //get conversations
+  app.get('/chat/:userid', async (req, res) => {
+    const userID = req.params.userid
+    const conversations = await pool.query('SELECT * FROM public.conversations WHERE $1 = ANY (public.conversations.members)',[userID]).then(result => result.rows)
+    res.status(200).json(conversations)
+  })
+
+  //add messages
+  app.post('/messages', async (req, res) => {
+    const {conversation_id, message, sender_id} = req.body
+    const savedMessage = await pool.query('INSERT INTO public.messages (conversation_id, message, sender_id) VALUES ($1, $2, $3) RETURNING *', [conversation_id, message, sender_id]).then(result => result.rows[0])
+    res.status(200).json(savedMessage)
+  })
+
+
+  //get messages
+  app.get('/messages/:conversationID', async (req, res) => {
+    const {conversationID} = req.params
+    const allMessages = await pool.query('SELECT * FROM public.messages WHERE conversation_id = $1', [conversationID]).then(result => result.rows)
+    res.status(200).json(allMessages);
+  })
+
+  //get user
+  app.get('/users', async (req, res) => {
+    const userId = req.query.userId
+    const user = await pool.query('SELECT * FROM public.users WHERE id = $1', [userId]).then(result => result.rows[0]);
+    res.status(200).json(user);
+  })
+
 
 
 
@@ -134,6 +177,49 @@ app.post("/login", (req, res, next) => {
 
 //     res.redirect('/users/login');
 // }
+
+
+//SOCKET IO CONNECTION
+let users = [];
+
+function addUser (userId, socketId) {
+  !users.some((user) => user.userId === userId) &&
+    users.push({ userId, socketId });
+}
+
+function removeUser (socketId) {
+  users = users.filter(user => user.socketId !== socketId)
+}
+
+function getUser (userId) {
+  return users.find(user => user.userId === userId)
+}
+
+io.on("connection", (socket) => {
+  console.log("User connected")
+  //take userId and socketid from user
+  socket.on("addUser", userId => {
+    addUser(userId, socket.id)
+    io.emit("getUsers", users)
+  });
+
+  //send and get message
+  socket.on("sendMessage", ({senderId, recieverId, message}) => {
+    const user = getUser(recieverId);
+    io.to(user.socketId).emit("getMessage", {
+      senderId,
+      message
+    });
+  });
+
+
+  //disconnect user
+  socket.on("disconnect", () => {
+    console.log("user disconnected")
+    removeUser(socket.id)
+    io.emit("getUsers", users)
+  })
+})
 
 //SERVER
 app.listen(process.env.PORT, () => {

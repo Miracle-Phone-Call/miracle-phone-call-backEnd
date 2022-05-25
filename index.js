@@ -32,7 +32,7 @@ const io = new Server(server, {
   )
 
 //Listens for the port 3001
-server.listen(3001, () => {
+server.listen(3002, () => {
   console.log('SERVER RUNNING')
   //When server runs, it will console.log the message "Server Running"
   }

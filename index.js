@@ -31,9 +31,15 @@ const io = new Server(server, {
   }
   )
 
+<<<<<<< HEAD
 //Listens for the port 3001
 server.listen(3002, () => {
   console.log('SERVER RUNNING')
+=======
+//Listens for the port 3002
+server.listen(3002, () => {
+  console.log('Web Socket Server Running on Port 3002')
+>>>>>>> b6b1836cf0a72bf451034b3433796358219beacc
   //When server runs, it will console.log the message "Server Running"
   }
   )

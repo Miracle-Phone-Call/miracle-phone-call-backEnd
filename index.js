@@ -51,7 +51,7 @@ app.post('/signup', async (req, res) => {
         if (results.rows.length) res.send("User Already Exists");
         if (!results.rows.length) {
             const hashedPassword = await bcrypt.hash(password, 10);
-            pool.query('INSERT INTO public.users (first_name, last_name, username, password) VALUES ($1, $2, $3, $4)', [firstName, lastName, username, hashedPassword])
+            pool.query('INSERT INTO public.users (first_name, last_name, username, bio, password) VALUES ($1, $2, $3, $4, $5)', [firstName, lastName, username, "Add a bio to let other users know more about you", hashedPassword])
             res.send("User Created");
           }
     })
@@ -73,7 +73,7 @@ app.post("/login", (req, res, next) => {
   //SEARCH USER ARRAY BACKEND
   app.get('/search/:username', async(req, res) => {
     const userName = req.params.username;
-    const getAllUsers = await pool.query('SELECT id, username, first_name, last_name FROM public.users WHERE username != $1', [userName]).then(results => results.rows)
+    const getAllUsers = await pool.query('SELECT id, username, first_name, last_name, bio FROM public.users WHERE username != $1', [userName]).then(results => results.rows)
     res.status(200).json(getAllUsers)
   })
   
@@ -90,9 +90,9 @@ app.post("/login", (req, res, next) => {
   //PROFILE BACKEND
   // update all
   app.patch("/users/:username",async(req,res) => {
-    const {firstName, lastName} = req.body
+    const {firstName, lastName, bio} = req.body
     const userName = req.params.username
-    const updateInfo= await pool.query('UPDATE public.users SET first_name = $1, last_name = $2 WHERE username = $3 RETURNING *', [firstName, lastName, userName]).then(results => results.rows[0])
+    const updateInfo= await pool.query('UPDATE public.users SET first_name = $1, last_name = $2, bio = $3 WHERE username = $4 RETURNING *', [firstName, lastName, bio, userName]).then(results => results.rows[0])
     res.status(200).json(updateInfo)
   })
   
@@ -156,6 +156,7 @@ app.post("/login", (req, res, next) => {
   app.get('/users', async (req, res) => {
     const userId = req.query.userId
     const user = await pool.query('SELECT * FROM public.users WHERE id = $1', [userId]).then(result => result.rows[0]);
+    console.log(user);
     res.status(200).json(user);
   })
 
